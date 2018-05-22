@@ -8,10 +8,12 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
+import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -34,6 +36,9 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     private CameraBridgeViewBase mOpenCvCameraView;
     private boolean              mIsJavaCamera = true;
     private MenuItem             mItemSwitchCamera = null;
+    private CascadeClassifier    faceCascade;
+    private MatOfRect            detectedFaces;
+    private static Scalar blue;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -43,6 +48,13 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 {
                     Log.i(TAG, "OpenCV loaded successfully");
                     mOpenCvCameraView.enableView();
+
+                    blue = new Scalar(0,0,255);
+
+                    //Log.e("onManagerConnected", initAssetFile("haarcascade_frontalface_default.xml"));
+                    faceCascade = new CascadeClassifier();
+                    faceCascade.load(initAssetFile("haarcascade_frontalface_default.xml"));
+                    detectedFaces = new MatOfRect();
                 } break;
                 default:
                 {
@@ -119,8 +131,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         Mat col  = inputFrame.rgba();
 
         Mat tmp = gray.clone();
-        Imgproc.Canny(gray, tmp, 80, 100);
-        Imgproc.cvtColor(tmp, col, Imgproc.COLOR_GRAY2RGBA, 4);
+        Mat tmp2 = col.clone();
+        //Imgproc.Canny(gray, tmp, 80, 100);
+        //Imgproc.cvtColor(tmp, col, Imgproc.COLOR_GRAY2RGBA, 4);
+
+        //Log.e("onCameraFrame", detectedFaces.toString());
+        faceCascade.detectMultiScale(tmp, detectedFaces);
+        for (Rect face: detectedFaces.toList()) {
+            Point pointStart = new Point(face.x, face.y);
+            Point pointEnd   = new Point(face.x + face.width, face.y + face.height);
+            Imgproc.rectangle(col, pointStart, pointEnd, blue, 2);
+        }
 
         return col;
     }
@@ -128,13 +149,14 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     public String initAssetFile(String filename)  {
         File file = new File(getFilesDir(), filename);
+        Log.e(TAG,"processing local file: "+file.toString());
         if (!file.exists()) try {
             InputStream is = getAssets().open(filename);
             OutputStream os = new FileOutputStream(file);
             byte[] data = new byte[is.available()];
             is.read(data); os.write(data); is.close(); os.close();
         } catch (IOException e) { e.printStackTrace(); }
-        Log.d(TAG,"prepared local file: "+filename);
+        Log.e(TAG,"prepared local file: "+filename);
         return file.getAbsolutePath();
     }
 }
