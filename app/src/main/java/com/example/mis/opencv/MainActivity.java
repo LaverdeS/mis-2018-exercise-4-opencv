@@ -175,7 +175,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                         );
                         int noseRadius = (int) eyesMidPointDist / 2;
                         //draw the red nose
-                        Imgproc.circle(faceFrame, noseTipPosition, noseRadius, red, -1);
+                        Imgproc.circle(faceFrame, noseTipPosition, noseRadius, red, -1); // thickness -1 fills the circle
                     }
                 }
             }
