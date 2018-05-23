@@ -29,6 +29,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends Activity implements CvCameraViewListener2 {
     private static final String TAG = "OCVSample::Activity";
@@ -37,8 +39,12 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     private boolean              mIsJavaCamera = true;
     private MenuItem             mItemSwitchCamera = null;
     private CascadeClassifier    faceCascade;
+    private CascadeClassifier    eyeCascade;
     private MatOfRect            detectedFaces;
+    private MatOfRect            detectedEyes;
+    private Point                noseTipPosition;
     private static Scalar blue;
+    private static Scalar red;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -50,11 +56,14 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     mOpenCvCameraView.enableView();
 
                     blue = new Scalar(0,0,255);
+                    red = new Scalar(255, 0, 0);
 
                     //Log.e("onManagerConnected", initAssetFile("haarcascade_frontalface_default.xml"));
-                    faceCascade = new CascadeClassifier();
-                    faceCascade.load(initAssetFile("haarcascade_frontalface_default.xml"));
-                    detectedFaces = new MatOfRect();
+                    faceCascade     = new CascadeClassifier(initAssetFile("haarcascade_frontalface_default.xml"));
+                    eyeCascade      = new CascadeClassifier(initAssetFile("haarcascade_eye.xml"));
+                    detectedFaces   = new MatOfRect();
+                    detectedEyes    = new MatOfRect();
+                    noseTipPosition = new Point();
                 } break;
                 default:
                 {
@@ -127,20 +136,41 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         return col;
         */
 
-        Mat gray = inputFrame.gray();
+        //Mat gray = inputFrame.gray();
         Mat col  = inputFrame.rgba();
 
-        Mat tmp = gray.clone();
-        Mat tmp2 = col.clone();
+        //Mat tmp = gray.clone();
+        //Mat tmp2 = col.clone();
         //Imgproc.Canny(gray, tmp, 80, 100);
         //Imgproc.cvtColor(tmp, col, Imgproc.COLOR_GRAY2RGBA, 4);
 
         //Log.e("onCameraFrame", detectedFaces.toString());
-        faceCascade.detectMultiScale(tmp, detectedFaces);
+        faceCascade.detectMultiScale(col, detectedFaces);
         for (Rect face: detectedFaces.toList()) {
-            Point pointStart = new Point(face.x, face.y);
-            Point pointEnd   = new Point(face.x + face.width, face.y + face.height);
-            Imgproc.rectangle(col, pointStart, pointEnd, blue, 2);
+            //Log.e("FaceDetection", "faceWidth = " + face.width + " faceHeight = " + face.height);
+            if (face.area() > 1000) {
+                Point pointStart = new Point(face.x, face.y);
+                Point pointEnd = new Point(face.x + face.width, face.y + face.height);
+                Imgproc.rectangle(col, pointStart, pointEnd, blue, 2);
+                eyeCascade.detectMultiScale(col, detectedEyes);
+                Rect[] eyes = detectedEyes.toArray();
+                if (eyes.length == 2){
+                    Log.d(TAG, "Whole frontal face detected!");
+                    // the average of the position of the left extreme of one eye and the right extreme
+                    // of the other give us a good estimation of the position of the center of the eyes,
+                    // not depending on the detecting order
+                    double xMidPoint = (eyes[0].x + (eyes[1].x + eyes[1].width) ) / 2;
+                    // average of the y position of the average y position of each eye
+                    double yMidPoint = ((eyes[0].y + eyes[0].height) / 2) + ((eyes[1].y + eyes[1].height) / 2) / 2;
+                    double[] noseTipCoords = {xMidPoint, (yMidPoint - face.y) / 2};
+                    noseTipPosition.set(noseTipCoords);
+
+                    double eyesMidPointDist = ((eyes[0].x + eyes[0].width) / 2) - ((eyes[1].x + eyes[1].width) / 2);
+                    int noseRadius = (int) eyesMidPointDist / 2;
+
+                    Imgproc.circle(col, noseTipPosition, noseRadius, red);
+                }
+            }
         }
 
         return col;
