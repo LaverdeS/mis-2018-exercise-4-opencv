@@ -167,7 +167,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                         // average of the y position of the average y position of each eye
                         double yMidPoint = ((eyes[0].y + eyes[0].height) / 2) + ((eyes[1].y + eyes[1].height) / 2) / 2;
 
-                        double[] noseTipCoords = {xMidPoint, (yMidPoint - face.y + face.width) / 2};
+                        double[] noseTipCoords = {xMidPoint, (yMidPoint - face.y + face.height) / 2};
                         noseTipPosition.set(noseTipCoords);
 
                         double eyesMidPointDist = Math.abs(
